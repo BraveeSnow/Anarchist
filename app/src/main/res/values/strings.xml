@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Anarchist</string>
+    <string name="nav_feed">Feed</string>
+    <string name="nav_anime">Anime</string>
+    <string name="nav_manga">Manga</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_profile">Profile</string>
+
+    <string name="search_placeholder">Search here…</string>
+    <string name="tab_anime">Anime</string>
+    <string name="tab_manga">Manga</string>
+</resources>
