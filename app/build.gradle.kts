@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.apollographql.apollo3")
 }
 
 android {
@@ -49,6 +50,12 @@ android {
     }
 }
 
+apollo {
+    service("anilist") {
+        packageName.set("world.snows.anarchist")
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
@@ -60,6 +67,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.navigation:navigation-compose:2.7.6")
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))
+    implementation("com.apollographql.apollo3:apollo-runtime:3.8.2")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

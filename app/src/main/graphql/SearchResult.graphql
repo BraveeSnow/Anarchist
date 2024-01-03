@@ -1,0 +1,16 @@
+query SearchResult($title: String, $type: MediaType, $genres: [String]) {
+    Page(perPage: 10) {
+        media(search: $title, type: $type, genre_in: $genres) {
+            title {
+                english
+                romaji
+                native
+            }
+            coverImage {
+                large
+            }
+            bannerImage
+            genres
+        }
+    }
+}
