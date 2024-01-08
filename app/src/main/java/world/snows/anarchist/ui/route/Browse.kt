@@ -1,5 +1,7 @@
 package world.snows.anarchist.ui.route
 
+import android.util.Log
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -8,19 +10,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,18 +38,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.apollographql.apollo3.api.Optional
 import world.snows.anarchist.MainRoute
 import world.snows.anarchist.R
+import world.snows.anarchist.SearchResultQuery
+import world.snows.anarchist.anilist.GraphQLClient
 import world.snows.anarchist.anilist.type.Genre
+import world.snows.anarchist.type.MediaType
 import world.snows.anarchist.ui.component.Title
-import world.snows.anarchist.ui.theme.SuccessGreen
+import world.snows.anarchist.ui.component.TitleEntry
+import world.snows.anarchist.ui.theme.DarkSuccessGreen
+import world.snows.anarchist.ui.theme.LightSuccessGreen
 
 const val browseRoute = "browseCommon"
 const val searchRoute = "search"
@@ -58,24 +73,20 @@ fun NavGraphBuilder.browseGraph(navigator: NavHostController) {
         composable(searchRoute) {
             SearchScreen(navigator)
         }
-        composable("$resultRoute/{query}/{type}/{genres}",
-            arguments = listOf(
-                navArgument("query") {
-                    type = NavType.StringType
-                }, navArgument("type") {
-                    type = NavType.StringType
-                }, navArgument("genres") {
-                    type = NavType.IntType
-                })
+        composable(
+            "$resultRoute/{query}/{type}/{genres}", arguments = listOf(navArgument("query") {
+                type = NavType.StringType
+            }, navArgument("type") {
+                type = NavType.StringType
+            }, navArgument("genres") {
+                type = NavType.IntType
+            })
         ) { backStackEntry ->
             val args = backStackEntry.arguments
             val genreFilters = args?.getInt("genres")!!
-            ResultScreen(
-                navigator = navigator,
-                query = args.getString("query")!!,
+            ResultScreen(query = args.getString("query")!!,
                 type = args.getString("type")!!,
-                genres = List(Genre.entries.size) { i -> (genreFilters and (1 shl i)) != 0 }
-            )
+                genres = List(Genre.entries.size) { i -> (genreFilters and (1 shl i)) != 0 })
         }
     }
 }
@@ -119,8 +130,7 @@ fun SearchScreen(navigator: NavHostController) {
     }
 
     Scaffold(topBar = {
-        SearchBar(
-            query = searchQuery,
+        SearchBar(query = searchQuery,
             onQueryChange = { searchQuery = it },
             onSearch = {
                 searchActive = false
@@ -131,24 +141,19 @@ fun SearchScreen(navigator: NavHostController) {
             leadingIcon = { Icon(painterResource(R.drawable.search), "Search bar icon") },
             modifier = Modifier.fillMaxWidth()
         ) {}
-    },
-        bottomBar = {
-            Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
-                LargeFloatingActionButton(
-                    onClick = { /*TODO*/ },
-                    modifier = Modifier
-                        .padding(16.dp)
-                ) {
-                    Icon(
-                        painterResource(R.drawable.search),
-                        "Search",
-                        modifier = Modifier.scale(1.5F)
-                    )
-                }
+    }, bottomBar = {
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
+            LargeFloatingActionButton(
+                onClick = { navigator.navigate("$resultRoute/$searchQuery/${if (mediaType) "ANIME" else "MANGA"}/$genreSelection") },
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    painterResource(R.drawable.search), "Search", modifier = Modifier.scale(1.5F)
+                )
             }
-
         }
-    ) { paddingValues ->
+
+    }) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -174,25 +179,21 @@ fun SearchScreen(navigator: NavHostController) {
             )
             FlowRow {
                 Genre.entries.onEachIndexed { index, entry ->
-                    FilterChip(
-                        selected = (genreSelection and (1 shl index)) != 0,
-                        onClick = {
-                            genreSelection = genreSelection xor (1 shl index)
-                        },
-                        label = {
-                            Text(
-                                stringResource(entry.stringId)
-                            )
-                        },
-                        leadingIcon = {
-                            if ((genreSelection and (1 shl index)) != 0) {
-                                Icon(painterResource(R.drawable.check), "Selected")
-                            }
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = SuccessGreen
-                        ),
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                    FilterChip(selected = (genreSelection and (1 shl index)) != 0, onClick = {
+                        genreSelection = genreSelection xor (1 shl index)
+                    }, label = {
+                        Text(
+                            stringResource(entry.stringId)
+                        )
+                    }, leadingIcon = {
+                        if ((genreSelection and (1 shl index)) != 0) {
+                            Icon(painterResource(R.drawable.check), "Selected")
+                        }
+                    }, colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = if (isSystemInDarkTheme()) DarkSuccessGreen else LightSuccessGreen,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.background,
+                        selectedLabelColor = MaterialTheme.colorScheme.background
+                    ), modifier = Modifier.padding(horizontal = 4.dp)
                     )
                 }
             }
@@ -202,10 +203,65 @@ fun SearchScreen(navigator: NavHostController) {
 
 @Composable
 fun ResultScreen(
-    navigator: NavHostController,
-    query: String,
-    type: String,
-    genres: List<Boolean> = emptyList()
+    query: String, type: String, genres: List<Boolean> = emptyList()
 ) {
+    val anilistClient by remember {
+        mutableStateOf(GraphQLClient())
+    }
+    var result by remember {
+        mutableStateOf(SearchResultQuery.Data(null))
+    }
 
+    LaunchedEffect(query, type, genres) {
+        val filteredGenres = Genre.entries.filterIndexed { index, _ -> genres[index] }
+        result = anilistClient.searchTitle(
+            query,
+            if (type == MediaType.ANIME.rawValue) MediaType.ANIME else MediaType.MANGA,
+            Optional.presentIfNotNull(filteredGenres.ifEmpty { null })
+        ).dataAssertNoErrors
+        Log.d("result", "$result")
+    }
+
+    if (result.Page == null) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (result.Page?.media?.isEmpty() == true) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                painterResource(R.drawable.error),
+                stringResource(R.string.result_none_found),
+                modifier = Modifier
+                    .scale(1.5F)
+                    .padding(16.dp)
+            )
+            Text(stringResource(R.string.result_none_found))
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                "${stringResource(R.string.result_searched_for)} \"$query\"",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(8.dp)
+            )
+            result.Page?.media?.forEach { entry ->
+                if (entry != null) {
+                    TitleEntry(entry)
+                }
+            }
+        }
+    }
 }

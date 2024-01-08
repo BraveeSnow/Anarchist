@@ -31,4 +31,8 @@
     <string name="genre_sports">Sports</string>
     <string name="genre_supernatural">Supernatural</string>
     <string name="genre_thriller">Thriller</string>
+
+    <string name="result_searched_for">Search results for</string>
+    <string name="result_none_found">No results found</string>
+    <string name="result_a11y_image">Cover image for</string>
 </resources>

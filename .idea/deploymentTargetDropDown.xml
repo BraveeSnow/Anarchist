@@ -2,36 +2,20 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
-      <entry key="AnarchistMainPage">
-        <State>
-          <targetSelectedWithDropDown>
-            <Target>
-              <type value="QUICK_BOOT_TARGET" />
-              <deviceKey>
-                <Key>
-                  <type value="VIRTUAL_DEVICE_PATH" />
-                  <value value="C:\Users\BraveeSnow\.android\avd\Pixel_7_API_34.avd" />
-                </Key>
-              </deviceKey>
-            </Target>
-          </targetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2024-01-02T08:02:41.395020Z" />
-        </State>
-      </entry>
       <entry key="app">
         <State>
-          <targetSelectedWithDropDown>
+          <runningDeviceTargetSelectedWithDropDown>
             <Target>
-              <type value="QUICK_BOOT_TARGET" />
+              <type value="RUNNING_DEVICE_TARGET" />
               <deviceKey>
                 <Key>
-                  <type value="VIRTUAL_DEVICE_PATH" />
-                  <value value="C:\Users\BraveeSnow\.android\avd\Pixel_7_API_34.avd" />
+                  <type value="SERIAL_NUMBER" />
+                  <value value="4647513950503098" />
                 </Key>
               </deviceKey>
             </Target>
-          </targetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2024-01-01T07:34:10.491166900Z" />
+          </runningDeviceTargetSelectedWithDropDown>
+          <timeTargetWasSelectedWithDropDown value="2024-01-07T22:14:45.903128200Z" />
         </State>
       </entry>
     </value>

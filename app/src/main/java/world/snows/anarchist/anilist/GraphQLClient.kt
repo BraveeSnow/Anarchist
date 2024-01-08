@@ -2,6 +2,7 @@ package world.snows.anarchist.anilist
 
 import android.util.Log
 import com.apollographql.apollo3.ApolloClient
+import com.apollographql.apollo3.api.ApolloResponse
 import com.apollographql.apollo3.api.Optional
 import world.snows.anarchist.SearchResultQuery
 import world.snows.anarchist.anilist.type.Genre
@@ -14,8 +15,12 @@ class GraphQLClient {
         .serverUrl(ANILIST_ENDPOINT)
         .build()
 
-    suspend fun searchTitle(title: String, type: MediaType, genreFilter: Optional<List<Genre>>) {
-        val result = client.query(
+    suspend fun searchTitle(
+        title: String,
+        type: MediaType,
+        genreFilter: Optional<List<Genre>>
+    ): ApolloResponse<SearchResultQuery.Data> {
+        return client.query(
             SearchResultQuery(
                 Optional.present(title),
                 Optional.present(type),
