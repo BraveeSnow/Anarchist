@@ -1,6 +1,5 @@
 package world.snows.anarchist.ui.route
 
-import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
@@ -20,7 +20,9 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
@@ -36,17 +38,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import coil.compose.AsyncImage
 import com.apollographql.apollo3.api.Optional
 import world.snows.anarchist.MainRoute
 import world.snows.anarchist.R
@@ -58,12 +60,15 @@ import world.snows.anarchist.ui.component.Title
 import world.snows.anarchist.ui.component.TitleEntry
 import world.snows.anarchist.ui.theme.DarkSuccessGreen
 import world.snows.anarchist.ui.theme.LightSuccessGreen
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 const val browseRoute = "browseCommon"
 const val searchRoute = "search"
 const val resultRoute = "result"
 
 @ExperimentalMaterial3Api
+@ExperimentalEncodingApi
 @ExperimentalLayoutApi
 fun NavGraphBuilder.browseGraph(navigator: NavHostController) {
     navigation(startDestination = browseRoute, route = MainRoute.Browse.route) {
@@ -84,7 +89,9 @@ fun NavGraphBuilder.browseGraph(navigator: NavHostController) {
         ) { backStackEntry ->
             val args = backStackEntry.arguments
             val genreFilters = args?.getInt("genres")!!
-            ResultScreen(query = args.getString("query")!!,
+            ResultScreen(
+                navigator = navigator,
+                query = Base64.decode(args.getString("query")!!).decodeToString(),
                 type = args.getString("type")!!,
                 genres = List(Genre.entries.size) { i -> (genreFilters and (1 shl i)) != 0 })
         }
@@ -114,6 +121,7 @@ fun BrowseScreen(navigator: NavHostController) {
 
 @Composable
 @ExperimentalMaterial3Api
+@ExperimentalEncodingApi
 @ExperimentalLayoutApi
 fun SearchScreen(navigator: NavHostController) {
     var searchQuery by remember {
@@ -130,11 +138,18 @@ fun SearchScreen(navigator: NavHostController) {
     }
 
     Scaffold(topBar = {
-        SearchBar(query = searchQuery,
+        SearchBar(
+            query = searchQuery,
             onQueryChange = { searchQuery = it },
             onSearch = {
                 searchActive = false
-                navigator.navigate("$resultRoute/$it/${if (mediaType) "ANIME" else "MANGA"}/$genreSelection")
+                navigator.navigate(
+                    "$resultRoute/${
+                        Base64.encode(
+                            it.toByteArray()
+                        )
+                    }/${if (mediaType) "ANIME" else "MANGA"}/$genreSelection"
+                )
             },
             active = searchActive,
             onActiveChange = { searchActive = !searchActive },
@@ -144,8 +159,15 @@ fun SearchScreen(navigator: NavHostController) {
     }, bottomBar = {
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
             LargeFloatingActionButton(
-                onClick = { navigator.navigate("$resultRoute/$searchQuery/${if (mediaType) "ANIME" else "MANGA"}/$genreSelection") },
-                modifier = Modifier.padding(16.dp)
+                onClick = {
+                    navigator.navigate(
+                        "$resultRoute/${
+                            Base64.encode(
+                                searchQuery.toByteArray()
+                            )
+                        }/${if (mediaType) "ANIME" else "MANGA"}/$genreSelection"
+                    )
+                }, modifier = Modifier.padding(16.dp)
             ) {
                 Icon(
                     painterResource(R.drawable.search), "Search", modifier = Modifier.scale(1.5F)
@@ -167,10 +189,10 @@ fun SearchScreen(navigator: NavHostController) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                RadioButton(selected = mediaType, onClick = { mediaType = !mediaType })
+                RadioButton(selected = mediaType, onClick = { mediaType = true })
                 Text(stringResource(R.string.browse_anime))
 
-                RadioButton(selected = !mediaType, onClick = { mediaType = !mediaType })
+                RadioButton(selected = !mediaType, onClick = { mediaType = false })
                 Text(stringResource(R.string.browse_manga))
 
             }
@@ -202,14 +224,21 @@ fun SearchScreen(navigator: NavHostController) {
 }
 
 @Composable
+@ExperimentalMaterial3Api
 fun ResultScreen(
-    query: String, type: String, genres: List<Boolean> = emptyList()
+    navigator: NavHostController, query: String, type: String, genres: List<Boolean> = emptyList()
 ) {
     val anilistClient by remember {
         mutableStateOf(GraphQLClient())
     }
     var result by remember {
         mutableStateOf(SearchResultQuery.Data(null))
+    }
+    var bottomSheetVisible by remember {
+        mutableStateOf(false)
+    }
+    var sheetTitleData by remember {
+        mutableStateOf<SearchResultQuery.Medium?>(null)
     }
 
     LaunchedEffect(query, type, genres) {
@@ -219,7 +248,6 @@ fun ResultScreen(
             if (type == MediaType.ANIME.rawValue) MediaType.ANIME else MediaType.MANGA,
             Optional.presentIfNotNull(filteredGenres.ifEmpty { null })
         ).dataAssertNoErrors
-        Log.d("result", "$result")
     }
 
     if (result.Page == null) {
@@ -246,21 +274,43 @@ fun ResultScreen(
             Text(stringResource(R.string.result_none_found))
         }
     } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            Text(
-                "${stringResource(R.string.result_searched_for)} \"$query\"",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(8.dp)
-            )
-            result.Page?.media?.forEach { entry ->
-                if (entry != null) {
-                    TitleEntry(entry)
+        Scaffold(topBar = {
+            TopAppBar(
+                title = { Text(query) },
+                navigationIcon = {
+                    IconButton(onClick = { navigator.popBackStack() }) {
+                        Icon(painterResource(R.drawable.back), null)
+                    }
+                })
+        }) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                result.Page?.media?.forEach { entry ->
+                    if (entry != null) {
+                        TitleEntry(entry) {
+                            sheetTitleData = entry
+                            bottomSheetVisible = true
+                        }
+                    }
                 }
+            }
+        }
+
+
+        if (bottomSheetVisible) {
+            ModalBottomSheet(onDismissRequest = { bottomSheetVisible = false }) {
+                AsyncImage(
+                    sheetTitleData?.bannerImage,
+                    null,
+                    contentScale = ContentScale.FillHeight,
+                    alignment = Alignment.Center,
+                    modifier = Modifier.height(128.dp)
+                )
+                Title(sheetTitleData?.title?.english ?: sheetTitleData?.title?.romaji!!)
             }
         }
     }

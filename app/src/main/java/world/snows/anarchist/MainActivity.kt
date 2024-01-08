@@ -22,18 +22,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import world.snows.anarchist.ui.route.BrowseScreen
 import world.snows.anarchist.ui.route.browseGraph
+import world.snows.anarchist.ui.route.resultRoute
 import world.snows.anarchist.ui.route.searchRoute
 import world.snows.anarchist.ui.theme.AnarchistTheme
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 class MainActivity : ComponentActivity() {
     @ExperimentalMaterial3Api
+    @ExperimentalEncodingApi
     @ExperimentalLayoutApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 @Preview
 @ExperimentalMaterial3Api
+@ExperimentalEncodingApi
 @ExperimentalLayoutApi
 fun AnarchistMainPage() {
     val navigator = rememberNavController()
@@ -59,8 +61,8 @@ fun AnarchistMainPage() {
         mutableStateOf(true)
     }
 
-    navbarVisible = when (backStack?.destination?.route) {
-        searchRoute -> false
+    navbarVisible = when (backStack?.destination?.route?.substringBefore('/')) {
+        searchRoute, resultRoute -> false
         else -> true
     }
 
