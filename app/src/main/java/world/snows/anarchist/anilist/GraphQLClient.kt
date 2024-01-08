@@ -1,6 +1,5 @@
 package world.snows.anarchist.anilist
 
-import android.util.Log
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.ApolloResponse
 import com.apollographql.apollo3.api.Optional
@@ -8,7 +7,7 @@ import world.snows.anarchist.SearchResultQuery
 import world.snows.anarchist.anilist.type.Genre
 import world.snows.anarchist.type.MediaType
 
-val ANILIST_ENDPOINT = "https://graphql.anilist.co/"
+const val ANILIST_ENDPOINT = "https://graphql.anilist.co/"
 
 class GraphQLClient {
     private var client = ApolloClient.Builder()
